@@ -1,0 +1,63 @@
+[
+  {
+    "Id": "a9zPf000005MQAf",
+    "Name": "a9zPf000005MQAf",
+    "ErrorCode": "200",
+    "Functionality": "saveDetailsToOnTrack",
+    "Status": "Success",
+    "ContextId": "2026-03-11T22:48:34:d99ad3ca-3994-c491-9096-962e0e208fcc",
+    "SourceName": "Integration Handler Apex Class",
+    "NumberOfRetry": 0,
+    "HTTPRequest": "{\"callercardphonenumber\":\"(559) 777-0361\",\"errormessage\":\"URL: https://pgeservice.my.salesforce.com/a9zPf000005MDYRIA4 \\n ContextId: 2026-03-11T22:47:34:f5975343-62db-c29b-669e-4dcf96df3e91 \\n Object Name: CCSPServiceAgreementTable \\n Functionality Name: SAFinancialHistory \\n Response: {\\n \\\"code\\\": 401,\\n \\\"status\\\": \\\"failure\\\",\\n \\\"integration\\\": \\\"GetSAFinancialTransactionDetails\\\",\\n \\\"details\\\": {\\n \\\"serviceAgreements\\\": {\\n \\\"code\\\": \\\"401\\\",\\n \\\"status\\\": \\\"failure\\\",\\n \\\"said\\\": \\\"9856553985\\\",\\n \\\"message\\\": \\\"token not found, expired or invalid\\\"\\n }\\n }\\n}\",\"callercardname\":\"Keana Allen\",\"datetime\":\"2026-03-11T22:48:34.368Z\",\"recordid\":\"a63Pf000008VOpRIAW\",\"user\":\"NAJ8\",\"callintent\":\"GEN_Emergency\",\"calleridentifier\":\"REDACTED\",\"accountid\":\"REDACTED\",\"description\":\"Select only one SP for Emergency Scenario.\",\"sourcechannel\":\"Salesforce-CCSP\",\"processstepidentifier\":\"\",\"processidentifier\":\"cCSPCreateServiceRequestEnglish\",\"reason\":\"Not Available in CCSP\"}",
+    "HTTPResponse": "{\"status\": \"success\", \"code\": \"200\", \"integration\": \"SubmitFeedback\", \"details\": {\"message\": \"Feedback submitted successfully\", \"id\": \"221438\"}}",
+    "User": "NAJ8",
+    "Datetime": "2026-03-11T22:48:34.368Z",
+    "ProcessIdentifier": "cCSPCreateServiceRequestEnglish"
+  },
+  {
+    "Id": "a9zPf00006qJl8IAE",
+    "Name": "a9zPf00006qJl8IAE",
+    "ErrorCode": "500",
+    "Functionality": "EnhancedStart",
+    "Status": "Failure",
+    "ContextId": "2026-03-27T10:50:57:b63f147c-57eb-0df0-a57e-c9d6daa086b8",
+    "SourceName": "Integration Handler Apex Class",
+    "NumberOfRetry": 0,
+    "HTTPRequest": "{\"processidentifier\":\"cCSPMultiStartServiceEnglish\"}",
+    "HTTPResponse": "{\"code\": \"500\", \"status\": \"failure\", \"integration\": \"EnhancedStart\", \"details\": {\"Contacts\": null, \"Accounts\": null, \"AccountContactRelationships\": null, \"AccountContactRelatedInfo\": null, \"InventoryItem\": [], \"Cases\": []}}",
+    "User": "G2CD",
+    "Datetime": "2026-03-27T16:44:00.000Z",
+    "ProcessIdentifier": "cCSPMultiStartServiceEnglish"
+  },
+  {
+    "Id": "a9zPf00006plusIAU",
+    "Name": "a9zPf00006plusIAU",
+    "ErrorCode": "500",
+    "Functionality": "UpdateFAFO",
+    "Status": "Failure",
+    "ContextId": "2026-03-27T10:00:17:d628c5fe-8c8a-e715-efc7-93baa095fc79",
+    "SourceName": "Integration Handler Apex Class",
+    "NumberOfRetry": 0,
+    "HTTPRequest": "{\"runUpdateFAFOcallout\":true,\"fieldorders\":[{\"fieldorderid\":\"1045530874\",\"fieldorderstatus\":\"Dispatched\",\"longdescription\":\"CIA, Axs OK, Start Service\",\"phonenumber\":\"REDACTED\",\"phonetype\":\"CELL\",\"scheduleenddate\":\"2026-03-27\",\"scheduleendtime\":\"10:00:16\",\"schedulestartdate\":\"2000-fi-ed\",\"schedulestarttime\":\"10:00:16\"}]}",
+    "HTTPResponse": "{\"code\": \"500\", \"status\": \"failure\", \"integration\": \"update-fieldorder\", \"details\": {\"fieldorders\": [{\"fieldorderid\": \"1045530874\", \"fieldorderstatus\": \"Dispatched\", \"longdescription\": \"CIA, Axs OK, Start Service\", \"phonenumber\": \"REDACTED\", \"phonetype\": \"CELL\", \"scheduleenddate\": \"2026-03-27\", \"scheduleendtime\": \"10:00:16\", \"schedulestartdate\": \"2000-fi-ed\", \"schedulestarttime\": \"10:00:16\", \"response\": {\"code\": \"500\", \"status\": \"failure\", \"message\": \"Conversion of value for field cmwsupdateFOandFA.cmwsupdateFOandFAService.cmwsupdateFOandFADetails.ScheduleDateTimeStart failed: Value is not valid for 'from' format.\"}}]}}",
+    "User": "JH37",
+    "Datetime": "2026-03-27T16:07:00.000Z",
+    "ProcessIdentifier": "cCSPMultiStartServiceEnglish"
+  },
+  {
+    "Id": "a9zPf00006exLgAAI",
+    "Name": "a9zPf00006exLgAAI",
+    "ErrorCode": "500",
+    "Functionality": "GetRatesFlyoutInfo",
+    "Status": "Failure",
+    "ContextId": "2026-03-27T09:53:00:abcd1234-5678-ef90-abcd-1234567890ab",
+    "SourceName": "Integration Handler Apex Class",
+    "NumberOfRetry": 0,
+    "HTTPRequest": "{\"processidentifier\":\"cCSPMultiStartServiceEnglish\"}",
+    "HTTPResponse": "{\"code\": \"500\", \"status\": \"failure\", \"integration\": \"GetRatesFlyoutInfo\", \"details\": {\"message\": \"CCSP_IP_GetRatesFlyoutInfo Failed to fetch the response.\"}}",
+    "User": "ZXV4",
+    "Datetime": "2026-03-27T15:29:00.000Z",
+    "ProcessIdentifier": "cCSPMultiStartServiceEnglish",
+    "ExceptionLogId": "a1WPf0000041jC6MAI"
+  }
+]

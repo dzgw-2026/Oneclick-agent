@@ -1,0 +1,58 @@
+[
+  {
+    "user": "G2CD",
+    "datetime": "2026-03-27T16:44:00.000Z",
+    "processidentifier": "cCSPMultiStartServiceEnglish",
+    "errormessage": "URL: https://pgeservice.my.salesforce.com/a9zPf00006qJl8IAE ContextId: 2026-03-27T10:50:57:b63f147c-57eb-0df0-a57e-c9d6daa086b8 Object Name: ccspRatePlanSelectionMulti Functionality Name: StartService Response: { \"code\": \"500\", \"status\": \"failure\", \"integration\": \"EnhancedStart\", \"details\": {\"Contacts\": null, \"Accounts\": null, \"AccountContactRelationships\": null, \"AccountContactRelatedInfo\": null, \"InventoryItem\": [], \"Cases\": []}}",
+    "description": "SCREEN FROZE WHEN SEARCHING FOR APT FOR START"
+  },
+  {
+    "user": "J25E",
+    "datetime": "2026-03-27T16:42:00.000Z",
+    "processidentifier": "",
+    "errormessage": "",
+    "description": "CONTINOUS LATENCY"
+  },
+  {
+    "user": "JH37",
+    "datetime": "2026-03-27T16:07:00.000Z",
+    "processidentifier": "cCSPMultiStartServiceEnglish",
+    "errormessage": "URL: https://pgeservice.my.salesforce.com/a9zPf00006plusIAU ContextId: 2026-03-27T10:00:17:d628c5fe-8c8a-e715-efc7-93baa095fc79 Object Name: IntegrationHandlerUpdateFO Functionality Name: UpdateFAFO Response: { \"code\": \"500\", \"status\": \"failure\", \"integration\": \"update-fieldorder\", \"details\": { \"fieldorders\": [{ \"fieldorderid\": \"1045530874\", \"fieldorderstatus\": \"Dispatched\", \"longdescription\": \"CIA, Axs OK, Start Service, DAVID FISHER\"}]}}",
+    "description": "WHEN CLICKING UPDATE REQUIRED CONTACT VERIFICATION CCSP DOES NOT BRING UP PAGE TO UPDATE. BRINGS UP OPTIONS TO CLICK EDIT. WONT UPDATE"
+  },
+  {
+    "user": "ZXV4",
+    "datetime": "2026-03-27T15:29:00.000Z",
+    "processidentifier": "cCSPMultiStartServiceEnglish",
+    "errormessage": "Exception Logs: Id: a1WPf0000041jC6MAI Exception Location: CCSP_IP_GetRatesFlyoutInfo Error Message: CCSP_IP_GetRatesFlyoutInfo Failed to fetch the response.",
+    "description": "CCSP DOES NOT BRING UP RES RATES TO CHOOSE FROM AND PROCEED WITH START OF SVC"
+  },
+  {
+    "user": "JH5I",
+    "datetime": "2026-03-27T13:16:00.000Z",
+    "processidentifier": "",
+    "errormessage": "",
+    "description": "SEARCHING USING SSN TO ADD PERSON IS JUST SPINNING"
+  },
+  {
+    "user": "M6FV",
+    "datetime": "2026-03-27T12:45:00.000Z",
+    "processidentifier": "",
+    "errormessage": "",
+    "description": "HEAT SOURCE ARE GREYED OUT"
+  },
+  {
+    "user": "VDM9",
+    "datetime": "2026-03-27T12:23:00.000Z",
+    "processidentifier": "",
+    "errormessage": "",
+    "description": "followuing kf and wont let me change the date said to stop and wont let me stop"
+  },
+  {
+    "user": "G2BB",
+    "datetime": "2026-03-27T12:10:00.000Z",
+    "processidentifier": "",
+    "errormessage": "",
+    "description": "HAD TO AUTHENTICATE CALLER CARD MULTIPLE TIMES"
+  }
+]

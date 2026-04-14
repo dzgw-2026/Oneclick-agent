@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "a1WPf0000041jC6MAI",
+    "ExceptionLogSeq": "E-090041389",
+    "Application": "CCSP",
+    "ExceptionLocation": "CCSP_IP_GetRatesFlyoutInfo",
+    "ExceptionType": "System.TypeException",
+    "SeverityLevel": "High",
+    "ErrorMessage": "CCSP_IP_GetRatesFlyoutInfo Failed to fetch the response.",
+    "LineNumber": 0,
+    "Owner": "Mia Del Rio",
+    "CreatedBy": "Mia Del Rio",
+    "CreatedDate": "2026-03-27T09:53:00.000Z",
+    "LastModifiedBy": "Mia Del Rio",
+    "LastModifiedDate": "2026-03-27T09:53:00.000Z"
+  },
+  {
+    "Id": "a1WPf0000042kD7NAJ",
+    "ExceptionLogSeq": "E-090041402",
+    "Application": "CCSP",
+    "ExceptionLocation": "CCSP_IP_SAFinancialHistory",
+    "ExceptionType": "System.CalloutException",
+    "SeverityLevel": "Medium",
+    "ErrorMessage": "Unauthorized: token not found, expired or invalid",
+    "LineNumber": 45,
+    "Owner": "Mia Del Rio",
+    "CreatedBy": "Mia Del Rio",
+    "CreatedDate": "2026-03-11T22:48:00.000Z",
+    "LastModifiedBy": "Mia Del Rio",
+    "LastModifiedDate": "2026-03-11T22:48:00.000Z"
+  }
+]
