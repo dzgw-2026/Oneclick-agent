@@ -31,23 +31,23 @@ resource "aws_cloudwatch_log_group" "api_gateway_logs" {
   retention_in_days = 14
 }
 
-resource "aws_apigatewayv2_integration" "agent" {
+resource "aws_apigatewayv2_integration" "intake" {
   api_id                 = aws_apigatewayv2_api.oneclick_api.id
   integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.agent.invoke_arn
+  integration_uri        = aws_lambda_function.intake.invoke_arn
   payload_format_version = "2.0"
 }
 
 resource "aws_apigatewayv2_route" "analyze" {
   api_id    = aws_apigatewayv2_api.oneclick_api.id
   route_key = "POST /analyze"
-  target    = "integrations/${aws_apigatewayv2_integration.agent.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.intake.id}"
 }
 
 resource "aws_lambda_permission" "api_gateway" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.agent.function_name
+  function_name = aws_lambda_function.intake.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.oneclick_api.execution_arn}/*/*"
 }

@@ -3,9 +3,9 @@ output "api_endpoint" {
   value       = "${aws_apigatewayv2_api.oneclick_api.api_endpoint}/analyze"
 }
 
-output "agent_lambda_name" {
-  description = "Name of the agent Lambda function"
-  value       = aws_lambda_function.agent.function_name
+output "intake_lambda_name" {
+  description = "Name of the intake Lambda function"
+  value       = aws_lambda_function.intake.function_name
 }
 
 output "vlocity_table" {

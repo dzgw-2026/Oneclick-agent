@@ -17,9 +17,15 @@ variable "project_name" {
 }
 
 variable "bedrock_model_id" {
-  description = "Bedrock foundation model ID for the agent"
+  description = "Bedrock foundation model ID for the agent (used by AgentCore Runtime)"
   type        = string
-  default     = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  default     = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+}
+
+variable "agent_runtime_id" {
+  description = "AgentCore Runtime ID (set after deploying the agent with agentcore deploy)"
+  type        = string
+  default     = ""
 }
 
 variable "lambda_runtime" {

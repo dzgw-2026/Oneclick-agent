@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import re
 
-
-# Category keyword mappings (lowercased for matching)
 CATEGORY_RULES: list[tuple[str, list[str], float]] = [
     ("LATENCY", ["spinning", "latency", "slow", "frozen", "froze", "stuck", "struck", "hang", "loading", "unresponsive"], 0.8),
     ("UI_ERROR", ["greyed out", "grayed out", "won't update", "wont update", "does not bring up", "doesn't bring up", "not bring up", "click edit", "won't let me", "wont let me", "not available"], 0.75),

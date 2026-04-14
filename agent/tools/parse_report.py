@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import re
 
-
-# Patterns for Salesforce record IDs found in error messages
 VLOCITY_ID_PATTERN = re.compile(r"\b(a9z[A-Za-z0-9]{12,15})\b")
 EXCEPTION_ID_PATTERN = re.compile(r"\b(a1W[A-Za-z0-9]{12,15})\b")
 

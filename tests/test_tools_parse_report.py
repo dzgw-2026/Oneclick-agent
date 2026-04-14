@@ -3,7 +3,7 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lambdas"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "agent"))
 
 from tools.parse_report import extract_salesforce_ids, parse_report
 

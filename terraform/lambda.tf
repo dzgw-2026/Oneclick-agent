@@ -1,7 +1,7 @@
-# --- IAM Role for the Agent Lambda ---
+# --- IAM Role for the Intake Lambda ---
 
-resource "aws_iam_role" "agent_lambda_role" {
-  name = "${var.project_name}-agent-lambda-role"
+resource "aws_iam_role" "intake_lambda_role" {
+  name = "${var.project_name}-intake-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -17,9 +17,9 @@ resource "aws_iam_role" "agent_lambda_role" {
   })
 }
 
-resource "aws_iam_role_policy" "agent_lambda_policy" {
-  name = "${var.project_name}-agent-lambda-policy"
-  role = aws_iam_role.agent_lambda_role.id
+resource "aws_iam_role_policy" "intake_lambda_policy" {
+  name = "${var.project_name}-intake-lambda-policy"
+  role = aws_iam_role.intake_lambda_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -36,50 +36,36 @@ resource "aws_iam_role_policy" "agent_lambda_policy" {
       {
         Effect = "Allow"
         Action = [
-          "dynamodb:GetItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
+          "bedrock-agentcore:InvokeAgentRuntime"
         ]
-        Resource = [
-          aws_dynamodb_table.vlocity_error_logs.arn,
-          "${aws_dynamodb_table.vlocity_error_logs.arn}/index/*",
-          aws_dynamodb_table.ps_exception_logs.arn
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "bedrock:InvokeModel"
-        ]
-        Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/${var.bedrock_model_id}"
+        Resource = "*"
       }
     ]
   })
 }
 
-# --- Agent Lambda (single function — tools execute in-process) ---
+# --- Intake Lambda (validates request, forwards to AgentCore Runtime) ---
 
-data "archive_file" "agent" {
+data "archive_file" "intake" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambdas"
-  output_path = "${path.module}/build/agent.zip"
+  source_file = "${path.module}/../lambdas/handler.py"
+  output_path = "${path.module}/build/intake.zip"
 }
 
-resource "aws_lambda_function" "agent" {
-  filename         = data.archive_file.agent.output_path
-  function_name    = "${var.project_name}-agent"
-  role             = aws_iam_role.agent_lambda_role.arn
+resource "aws_lambda_function" "intake" {
+  filename         = data.archive_file.intake.output_path
+  function_name    = "${var.project_name}-intake"
+  role             = aws_iam_role.intake_lambda_role.arn
   handler          = "handler.handler"
   runtime          = var.lambda_runtime
   timeout          = var.lambda_timeout
-  memory_size      = 256
-  source_code_hash = data.archive_file.agent.output_base64sha256
+  memory_size      = 128
+  source_code_hash = data.archive_file.intake.output_base64sha256
 
   environment {
     variables = {
-      BEDROCK_MODEL_ID    = var.bedrock_model_id
-      VLOCITY_TABLE       = var.vlocity_table_name
-      EXCEPTION_TABLE     = var.exception_table_name
+      AGENT_RUNTIME_ID    = var.agent_runtime_id
+      AGENT_NAME          = "OneClickAgent"
       AWS_REGION_OVERRIDE = var.aws_region
     }
   }

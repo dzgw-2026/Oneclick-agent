@@ -4,7 +4,7 @@ import json
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lambdas"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "agent"))
 
 from tools.query_vlocity_logs import parse_http_payload, enrich_log
 

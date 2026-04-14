@@ -6,15 +6,12 @@ in AWS Secrets Manager. The interface stays the same.
 
 from __future__ import annotations
 
-import json
 import os
 from typing import Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 
-
-SF_MODE = os.environ.get("SF_MODE", "mock")
 
 VLOCITY_TABLE = os.environ.get("VLOCITY_TABLE", "VlocityErrorLogs")
 EXCEPTION_TABLE = os.environ.get("EXCEPTION_TABLE", "PSExceptionLogs")
@@ -35,10 +32,7 @@ def get_vlocity_log_by_id(log_id: str) -> Optional[dict]:
 
 
 def search_vlocity_logs(user: str, start_time: str, end_time: str) -> list[dict]:
-    """Search Vlocity Error Logs by agent LAN ID and time range.
-
-    Uses a GSI on User + Datetime for efficient querying.
-    """
+    """Search Vlocity Error Logs by agent LAN ID and time range."""
     table = _get_dynamodb_resource().Table(VLOCITY_TABLE)
     response = table.query(
         IndexName="User-Datetime-index",
