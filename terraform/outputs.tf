@@ -17,3 +17,8 @@ output "exception_table" {
   description = "DynamoDB table for PS Exception Logs"
   value       = aws_dynamodb_table.ps_exception_logs.name
 }
+
+output "lambda_function_url" {
+  description = "Lambda Function URL (no 30s timeout limit)"
+  value       = aws_lambda_function_url.intake.function_url
+}

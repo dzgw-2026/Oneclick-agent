@@ -1,0 +1,84 @@
+{
+  "servers": {
+    "awslabs-core-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.core-mcp-server@latest",
+        "awslabs.core-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    },
+    "awslabs-aws-documentation-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.aws-documentation-mcp-server@latest",
+        "awslabs.aws-documentation-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    },
+    "awslabs-cdk-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.cdk-mcp-server@latest",
+        "awslabs.cdk-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    },
+    "awslabs-terraform-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.terraform-mcp-server@latest",
+        "awslabs.terraform-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    },
+    "awslabs-lambda-tool-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.lambda-tool-mcp-server@latest",
+        "awslabs.lambda-tool-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    },
+    "awslabs-dynamodb-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.dynamodb-mcp-server@latest",
+        "awslabs.dynamodb-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    },
+    "awslabs-aws-serverless-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.aws-serverless-mcp-server@latest",
+        "awslabs.aws-serverless-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    },
+    "awslabs-cost-explorer-mcp-server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool", "run", "--from",
+        "awslabs.cost-explorer-mcp-server@latest",
+        "awslabs.cost-explorer-mcp-server.exe"
+      ],
+      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
+    }
+  }
+}

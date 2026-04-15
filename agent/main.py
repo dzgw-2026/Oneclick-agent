@@ -8,6 +8,12 @@ from __future__ import annotations
 
 import json
 import os
+import sys
+
+# Ensure the directory containing main.py (and all bundled packages) is on sys.path
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+if _this_dir not in sys.path:
+    sys.path.insert(0, _this_dir)
 
 from strands import Agent, tool
 from bedrock_agentcore.runtime import BedrockAgentCoreApp

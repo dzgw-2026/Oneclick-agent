@@ -46,7 +46,7 @@ resource "null_resource" "seed_vlocity_logs" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      py -3 -c "
+      python3 -c "
 import json, boto3
 table = boto3.resource('dynamodb', region_name='${var.aws_region}').Table('${var.vlocity_table_name}')
 with open('../mock_data/vlocity_error_logs.json') as f:
@@ -69,7 +69,7 @@ resource "null_resource" "seed_exception_logs" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      py -3 -c "
+      python3 -c "
 import json, boto3
 table = boto3.resource('dynamodb', region_name='${var.aws_region}').Table('${var.exception_table_name}')
 with open('../mock_data/ps_exception_logs.json') as f:

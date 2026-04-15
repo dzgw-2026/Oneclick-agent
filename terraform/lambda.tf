@@ -70,3 +70,18 @@ resource "aws_lambda_function" "intake" {
     }
   }
 }
+
+# --- Lambda Function URL (bypasses API Gateway 30s timeout) ---
+
+resource "aws_lambda_function_url" "intake" {
+  function_name      = aws_lambda_function.intake.function_name
+  authorization_type = "NONE"
+}
+
+resource "aws_lambda_permission" "function_url_public" {
+  statement_id           = "AllowPublicFunctionURL"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.intake.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}

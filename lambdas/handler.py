@@ -32,7 +32,7 @@ def invoke_agentcore(report_data: dict) -> dict:
     payload.update(report_data)
 
     response = client.invoke_agent_runtime(
-        agentRuntimeId=AGENT_RUNTIME_ID,
+        agentRuntimeArn=AGENT_RUNTIME_ID,
         payload=json.dumps(payload),
     )
 
