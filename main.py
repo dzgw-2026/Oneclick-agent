@@ -7,13 +7,25 @@ log lookups, and issue classification. Deployed on AgentCore Runtime.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import os
 import re
+import time
+import uuid
 from datetime import datetime, timedelta
 from typing import Any, Optional
 import boto3
 from botocore.exceptions import ClientError
+import httpx
+
+# Request-scoped trace ID for correlating log lines across a single invocation.
+_trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar('trace_id', default='no-trace')
+
+
+def _tid() -> str:
+    """Shortcut to get the current trace ID."""
+    return _trace_id_var.get()
 
 from strands import Agent, tool
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -71,15 +83,18 @@ def parse_report(
         errormessage: Raw error message text.
         description: Agent-entered description of the issue.
     """
-    log.info("_parse_report- Start...")
+    t0 = time.monotonic()
+    log.info("[%s] parse_report START", _tid())
 
-    return _parse_report({
+    result = _parse_report({
         "user": user,
         "datetime": datetime,
         "processidentifier": processidentifier,
         "errormessage": errormessage,
         "description": description,
     })
+    log.info("[%s] parse_report END %dms", _tid(), int((time.monotonic() - t0) * 1000))
+    return result
 
 
 @tool
@@ -90,9 +105,11 @@ def get_vlocity_log_by_id(log_id: str) -> dict:
     Args:
         log_id: Salesforce Vlocity Error Log ID (starts with 'a9z').
     """
-    log.info("get_vlocity_log_by_id- Start...")
-
-    return _get_vlocity_log(log_id)
+    t0 = time.monotonic()
+    log.info("[%s] get_vlocity_log_by_id START id=%s", _tid(), log_id)
+    result = _get_vlocity_log(log_id)
+    log.info("[%s] get_vlocity_log_by_id END %dms", _tid(), int((time.monotonic() - t0) * 1000))
+    return result
 
 
 @tool
@@ -106,9 +123,11 @@ def search_vlocity_logs(user: str, start_time: str, end_time: str) -> dict:
         start_time: Start of time window (ISO 8601).
         end_time: End of time window (ISO 8601).
     """
-    log.info("search_vlocity_logs- Start...")
-
-    return _search_vlocity(user, start_time, end_time)
+    t0 = time.monotonic()
+    log.info("[%s] search_vlocity_logs START user=%s", _tid(), user)
+    result = _search_vlocity(user, start_time, end_time)
+    log.info("[%s] search_vlocity_logs END %dms", _tid(), int((time.monotonic() - t0) * 1000))
+    return result
 
 
 @tool
@@ -119,9 +138,11 @@ def get_exception_log_by_id(log_id: str) -> dict:
     Args:
         log_id: Salesforce PS Exception Log ID (starts with 'a1W').
     """
-    log.info("get_exception_log_by_id- Start...")
-
-    return _get_exception_log(log_id)
+    t0 = time.monotonic()
+    log.info("[%s] get_exception_log_by_id START id=%s", _tid(), log_id)
+    result = _get_exception_log(log_id)
+    log.info("[%s] get_exception_log_by_id END %dms", _tid(), int((time.monotonic() - t0) * 1000))
+    return result
 
 
 @tool
@@ -134,9 +155,11 @@ def search_exception_logs(application: str = "", location: str = "") -> dict:
         application: Application name (e.g., 'CCSP').
         location: Exception location / class name (e.g., 'CCSP_IP_GetRatesFlyoutInfo').
     """
-    log.info("search_exception_logs- Start...")
-
-    return _search_exceptions(application=application, location=location)
+    t0 = time.monotonic()
+    log.info("[%s] search_exception_logs START app=%s loc=%s", _tid(), application, location)
+    result = _search_exceptions(application=application, location=location)
+    log.info("[%s] search_exception_logs END %dms", _tid(), int((time.monotonic() - t0) * 1000))
+    return result
 
 
 @tool
@@ -150,9 +173,11 @@ def classify_issue(description: str, error_data: str = "") -> dict:
         description: Agent-entered description of the issue.
         error_data: Error data gathered from log lookups (optional).
     """
-    log.info("classify_issue- Start...")
-
-    return _classify_issue(description, error_data)
+    t0 = time.monotonic()
+    log.info("[%s] classify_issue START", _tid())
+    result = _classify_issue(description, error_data)
+    log.info("[%s] classify_issue END %dms", _tid(), int((time.monotonic() - t0) * 1000))
+    return result
 
 
 @tool
@@ -171,19 +196,22 @@ async def query_datadog_error_logs(record_id: str, user: str = "", trigger_time:
         trigger_time: Trigger timestamp (ISO 8601 format).
         lookback_minutes: Minutes to look back from trigger time (default: 1440).
     """
-    log.info("query_datadog_error_logs- Start...")
+    t0 = time.monotonic()
+    log.info("[%s] query_datadog_error_logs START record_id=%s user=%s lookback=%d", _tid(), record_id, user, lookback_minutes)
 
     try:
         trigger_dt = datetime.fromisoformat(trigger_time.replace('Z', '+00:00')) if trigger_time else datetime.now()
     except ValueError:
         trigger_dt = datetime.now()
-        log.info("query_datadog_error_logs- error...")
-    return await _fetch_datadog_logs(
+        log.warning("[%s] query_datadog_error_logs: invalid trigger_time=%s, using now()", _tid(), trigger_time)
+    result = await _fetch_datadog_logs(
         user=user,
         record_id=record_id,
         trigger_dt=trigger_dt,
         lookback_minutes=lookback_minutes,
     )
+    log.info("[%s] query_datadog_error_logs END %dms success=%s", _tid(), int((time.monotonic() - t0) * 1000), result.get('success'))
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -201,19 +229,22 @@ async def fetch_datadog_session_logs(user: str, record_id: str, trigger_time: st
         record_id: Salesforce Vlocity Error Log record ID.
         trigger_time: Trigger timestamp (ISO 8601 format).
     """
-    log.info("fetch_datadog_session_logs- Start...")
+    t0 = time.monotonic()
+    log.info("[%s] fetch_datadog_session_logs START user=%s record_id=%s", _tid(), user, record_id)
 
     try:
         trigger_dt = datetime.fromisoformat(trigger_time.replace('Z', '+00:00')) if trigger_time else datetime.now()
     except ValueError:
         trigger_dt = datetime.now()
-        log.info("fetch_datadog_session_logs- error...")
-    return await _fetch_datadog_logs(
+        log.warning("[%s] fetch_datadog_session_logs: invalid trigger_time=%s, using now()", _tid(), trigger_time)
+    result = await _fetch_datadog_logs(
         user=user,
         record_id=record_id,
         trigger_dt=trigger_dt,
         lookback_minutes=10,
     )
+    log.info("[%s] fetch_datadog_session_logs END %dms success=%s", _tid(), int((time.monotonic() - t0) * 1000), result.get('success'))
+    return result
 
 
 @tool
@@ -229,18 +260,21 @@ async def fetch_mulesoft_logs(ctx_id: str, trigger_time: str) -> dict:
         ctx_id: Correlation/context ID (Pivot ID) from a Vlocity error log.
         trigger_time: Trigger timestamp (ISO 8601 format).
     """
-    log.info("fetch_mulesoft_logs- Start...")
+    t0 = time.monotonic()
+    log.info("[%s] fetch_mulesoft_logs START ctx_id=%s", _tid(), ctx_id)
 
     try:
         credentials = get_datadog_credentials()
-        return await query_mulesoft_logs(
+        result = await query_mulesoft_logs(
             ctx_id=ctx_id,
             trigger_time=trigger_time,
             credentials=credentials,
         )
+        log.info("[%s] fetch_mulesoft_logs END %dms success=%s", _tid(), int((time.monotonic() - t0) * 1000), result.get('success'))
+        return result
     except Exception as e:
-        log.error(f"Failed to fetch Mulesoft logs: {e}")
-        log.info("fetch_mulesoft_logs- error...")
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        log.error("[%s] fetch_mulesoft_logs FAILED %dms %s: %s", _tid(), elapsed_ms, type(e).__name__, e)
         return {"success": False, "error": str(e), "ctx_id": ctx_id}
 
 
@@ -268,6 +302,7 @@ async def save_to_dynamodb(
         mulesoft_logs: Mulesoft logs as a JSON string (optional).
     """
     log.info("save_to_dynamodb- Start...")
+    t0 = time.monotonic()
 
     try:
         mulesoft_data: Any = json.loads(mulesoft_logs) if mulesoft_logs else None
@@ -295,14 +330,15 @@ async def save_to_dynamodb(
             error_code=error_code,
             mulesoft_logs=mulesoft_data,
         )
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
         if result.get("success"):
-            log.info("Persisted analysis result to DynamoDB: %s", result.get("key"))
+            log.info("[%s] save_to_dynamodb END %dms key=%s", _tid(), elapsed_ms, result.get("key"))
         else:
-            log.error("Failed to persist analysis result: %s", result.get("error"))
+            log.error("[%s] save_to_dynamodb FAILED %dms error=%s", _tid(), elapsed_ms, result.get("error"))
         return result
     except Exception as e:
-        log.error(f"Unexpected error saving to DynamoDB: {e}")
-        log.info("save_to_dynamodb- error...")
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        log.error("[%s] save_to_dynamodb EXCEPTION %dms %s: %s", _tid(), elapsed_ms, type(e).__name__, e)
         return {"success": False, "error": str(e)}
 
 
@@ -329,7 +365,8 @@ async def save_to_s3(
         mulesoft_logs: Mulesoft logs as a JSON string.
         analysis_results: Analysis results as a JSON string or plain text.
     """
-    log.info("save_to_s3- Start...")
+    log.info("[%s] save_to_s3 START record_id=%s", _tid(), record_id)
+    t0 = time.monotonic()
 
     def _parse_json(s: str) -> Any:
         if not s:
@@ -349,19 +386,15 @@ async def save_to_s3(
             mulesoft_logs=_parse_json(mulesoft_logs),
             analysis_results=_parse_json(analysis_results),
         )
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
         if result.get("success"):
-            log.info(
-                "Persisted One-Click artifacts to S3 bucket=%s prefix=%s keys=%s",
-                result.get("bucket"),
-                result.get("prefix"),
-                result.get("keys"),
-            )
+            log.info("[%s] save_to_s3 END %dms keys=%s", _tid(), elapsed_ms, result.get("keys"))
         else:
-            log.error("Failed to persist S3 artifacts: %s", result.get("error"))
+            log.error("[%s] save_to_s3 FAILED %dms error=%s", _tid(), elapsed_ms, result.get("error"))
         return result
     except Exception as e:
-        log.error(f"Unexpected error saving to S3: {e}")
-        log.info("save_to_s3- error...")
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        log.error("[%s] save_to_s3 EXCEPTION %dms %s: %s", _tid(), elapsed_ms, type(e).__name__, e)
         return {"success": False, "error": str(e)}
 
 
@@ -393,7 +426,8 @@ async def persist_analysis_artifacts(
             will attempt to fetch logs using a derived context ID.
         ctx_id: Optional Mulesoft context/correlation ID.
     """
-    log.info("persist_analysis_artifacts- Start...")
+    log.info("[%s] persist_analysis_artifacts START record_id=%s user=%s", _tid(), record_id, user)
+    t0 = time.monotonic()
 
     analysis_obj = _safe_parse_json(analysis_results)
 
@@ -461,14 +495,17 @@ async def persist_analysis_artifacts(
     )
 
     if ddb_result.get("success"):
-        log.info("persist_analysis_artifacts- DynamoDB save succeeded")
+        log.info("[%s] persist_analysis_artifacts DynamoDB OK", _tid())
     else:
-        log.error("persist_analysis_artifacts- DynamoDB save failed: %s", ddb_result.get("error"))
+        log.error("[%s] persist_analysis_artifacts DynamoDB FAILED: %s", _tid(), ddb_result.get("error"))
 
     if s3_result.get("success"):
-        log.info("persist_analysis_artifacts- S3 save succeeded")
+        log.info("[%s] persist_analysis_artifacts S3 OK", _tid())
     else:
-        log.error("persist_analysis_artifacts- S3 save failed: %s", s3_result.get("error"))
+        log.error("[%s] persist_analysis_artifacts S3 FAILED: %s", _tid(), s3_result.get("error"))
+
+    elapsed_ms = int((time.monotonic() - t0) * 1000)
+    log.info("[%s] persist_analysis_artifacts END %dms success=%s", _tid(), elapsed_ms, ddb_result.get("success") and s3_result.get("success"))
 
     return {
         "success": ddb_result.get("success") and s3_result.get("success"),
@@ -563,11 +600,12 @@ async def _resolve_mulesoft_logs(
             trigger_time=trigger_time,
             credentials=credentials,
         )
+        log.info("[%s] _resolve_mulesoft_logs fetched for ctx_id=%s success=%s", _tid(), resolved_ctx_id, data.get("success") if isinstance(data, dict) else "?")
         if isinstance(data, dict):
             return data
         return {"raw": data, "ctx_id": resolved_ctx_id}
     except Exception as e:
-        log.error(f"persist_analysis_artifacts- Failed to fetch Mulesoft logs: {e}")
+        log.error("[%s] _resolve_mulesoft_logs FAILED ctx_id=%s %s: %s", _tid(), resolved_ctx_id, type(e).__name__, e)
         return {"success": False, "error": str(e), "ctx_id": resolved_ctx_id}
 
 
@@ -672,9 +710,9 @@ async def _fetch_datadog_logs(
     Returns the same dict shape previously produced inline in ``invoke()``.
     Never raises; failures are returned as ``{"success": False, ...}``.
     """
+    t0 = time.monotonic()
+    trace = _tid()
     try:
-        import httpx
-
         credentials = get_datadog_credentials()
         api_key = credentials['api_key']
         app_key = credentials['application_key']
@@ -712,6 +750,7 @@ async def _fetch_datadog_logs(
             # Batch execution to avoid 429s (especially with the large _DD_ERROR_CODES list)
             responses = []
             chunk_size = 5
+            throttle_count = 0
             for i in range(0, len(tasks), chunk_size):
                 chunk = tasks[i:i + chunk_size]
                 chunk_responses = await asyncio.gather(*chunk, return_exceptions=True)
@@ -721,19 +760,36 @@ async def _fetch_datadog_logs(
 
             for i, response in enumerate(responses):
                 if isinstance(response, Exception):
-                    log.error(f"Helper fetch failed for code index {i}: {response}")
+                    log.error("[%s] _fetch_datadog_logs batch %d exception: %s", trace, i, response)
                     continue
-                
+
+                # Log rate-limit headers for every response for diagnostics.
+                rl_limit = response.headers.get("x-ratelimit-limit", "-")
+                rl_remaining = response.headers.get("x-ratelimit-remaining", "-")
+                rl_reset = response.headers.get("x-ratelimit-reset", "-")
+
                 if response.status_code == 429:
-                    log.warning(f"Helper fetch hit 429 for code index {i}")
+                    throttle_count += 1
+                    log.warning(
+                        "[%s] _fetch_datadog_logs batch %d -> 429 | "
+                        "x-ratelimit-limit=%s remaining=%s reset=%s",
+                        trace, i, rl_limit, rl_remaining, rl_reset,
+                    )
+                    continue
+
+                if response.status_code >= 400:
+                    log.error(
+                        "[%s] _fetch_datadog_logs batch %d -> HTTP %d | "
+                        "x-ratelimit-limit=%s remaining=%s reset=%s",
+                        trace, i, response.status_code, rl_limit, rl_remaining, rl_reset,
+                    )
                     continue
 
                 try:
-                    response.raise_for_status()
                     data = response.json()
                     events = data.get('data', [])
                 except Exception as e:
-                    log.error(f"Helper parse failed for code index {i}: {e}")
+                    log.error("[%s] _fetch_datadog_logs batch %d parse error: %s", trace, i, e)
                     continue
 
                 for event in events:
@@ -777,22 +833,47 @@ async def _fetch_datadog_logs(
                         'timestamp': event.get('attributes', {}).get('timestamp', ''),
                     })
 
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
         log.info(
-            f"Datadog: {len(matched_logs)} logs for user={user} record_id={record_id} "
-            f"lookback_minutes={lookback_minutes}"
+            "[%s] _fetch_datadog_logs complete: %d matched, %d throttled, %dms | "
+            "user=%s record_id=%s lookback_minutes=%d",
+            trace, len(matched_logs), throttle_count, elapsed_ms,
+            user, record_id, lookback_minutes,
         )
         return {
             'success': True,
             'record_id': record_id,
             'match_count': len(matched_logs),
             'error_logs': matched_logs,
+            'throttle_count': throttle_count,
             'time_range': {
                 'start': start_dt.isoformat(),
                 'end': trigger_dt.isoformat(),
             },
         }
+    except httpx.HTTPStatusError as e:
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        log.error(
+            "[%s] _fetch_datadog_logs HTTPStatusError: status=%d elapsed=%dms error=%s",
+            trace, e.response.status_code, elapsed_ms, e,
+        )
+        return {
+            'success': False,
+            'error': str(e),
+            'status': e.response.status_code,
+            'record_id': record_id,
+        }
+    except httpx.RequestError as e:
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        log.error("[%s] _fetch_datadog_logs RequestError: %dms %s", trace, elapsed_ms, e)
+        return {
+            'success': False,
+            'error': str(e),
+            'record_id': record_id,
+        }
     except Exception as e:
-        log.error(f"Error fetching Datadog logs: {e}")
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        log.error("[%s] _fetch_datadog_logs unexpected error: %dms %s: %s", trace, elapsed_ms, type(e).__name__, e)
         return {
             'success': False,
             'error': str(e),
@@ -860,8 +941,12 @@ async def invoke(payload, context):
     webhooks, EventBridge rules, SNS subscriptions) only need to supply
     enough identifying information for the agent to proceed.
     """
-    log.info("Invoking One-Click Analysis Agent...")
-    log.info(f"System prompt path: {_SYSTEM_PROMPT_PATH}")
+    # Assign a unique trace ID for this request so all log lines can be correlated.
+    request_trace_id = str(uuid.uuid4())
+    _trace_id_var.set(request_trace_id)
+
+    log.info("[%s] Invoking One-Click Analysis Agent...", request_trace_id)
+    log.info("[%s] System prompt path: %s", request_trace_id, _SYSTEM_PROMPT_PATH)
 
     # Unwrap any recognized event-source envelope to reach the report body.
     body = _unwrap_event_envelope(payload)
@@ -906,10 +991,22 @@ async def invoke(payload, context):
     )
 
     agent = get_or_create_agent()
-    stream = agent.stream_async(prompt)
-    async for event in stream:
-        if "data" in event and isinstance(event["data"], str):
-            yield event["data"]
+    try:
+        stream = agent.stream_async(prompt)
+        async for event in stream:
+            if "data" in event and isinstance(event["data"], str):
+                yield event["data"]
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        http_status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+        log.error(
+            "[%s] Bedrock ClientError: code=%s http_status=%d message=%s",
+            _tid(), error_code, http_status, str(e),
+        )
+        raise
+    except Exception as e:
+        log.error("[%s] Agent stream error: %s: %s", _tid(), type(e).__name__, e)
+        raise
 
 
 if __name__ == "__main__":

@@ -115,6 +115,21 @@ async def save_analysis_result(
     if mulesoft_logs:
         item["MulesoftLogs"] = _to_dynamodb_document(mulesoft_logs)
 
+    # Log serialized item size for capacity/throttle diagnostics.
+    try:
+        item_size_bytes = len(json.dumps(item, default=str).encode("utf-8"))
+    except Exception:
+        item_size_bytes = -1
+    logger.info(
+        "DynamoDB put_item pending: user=%s datetime=%s item_size_bytes=%d has_mulesoft=%s",
+        user_val, dt_val, item_size_bytes, bool(mulesoft_logs),
+    )
+    if item_size_bytes > 350_000:
+        logger.warning(
+            "DynamoDB item approaching 400KB limit: %d bytes for user=%s datetime=%s",
+            item_size_bytes, user_val, dt_val,
+        )
+
     try:
         loop = asyncio.get_running_loop()
         table, name, region_used = _get_table(table_name, region)
@@ -123,20 +138,33 @@ async def save_analysis_result(
         await loop.run_in_executor(None, lambda: table.put_item(Item=item))
         
         logger.info(
-            "Wrote analysis result to DynamoDB table=%s user=%s datetime=%s",
-            name,
-            user_val,
-            dt_val,
+            "Wrote analysis result to DynamoDB table=%s user=%s datetime=%s size=%d",
+            name, user_val, dt_val, item_size_bytes,
         )
         return {
             "success": True,
             "table": name,
             "region": region_used,
             "key": {"User": user_val, "DateTime": dt_val},
+            "item_size_bytes": item_size_bytes,
         }
-    except (ClientError, BotoCoreError) as e:
-        logger.error("DynamoDB put_item failed: %s", e)
-        return {"success": False, "error": str(e)}
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        http_status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+        logger.error(
+            "DynamoDB put_item ClientError: code=%s http_status=%d user=%s datetime=%s size=%d error=%s",
+            error_code, http_status, user_val, dt_val, item_size_bytes, e,
+        )
+        return {
+            "success": False,
+            "error": str(e),
+            "error_code": error_code,
+            "http_status": http_status,
+            "item_size_bytes": item_size_bytes,
+        }
+    except BotoCoreError as e:
+        logger.error("DynamoDB put_item BotoCoreError: user=%s datetime=%s error=%s", user_val, dt_val, e)
+        return {"success": False, "error": str(e), "item_size_bytes": item_size_bytes}
     except Exception as e:  # pragma: no cover - defensive
-        logger.exception("Unexpected error writing to DynamoDB")
-        return {"success": False, "error": str(e)}
+        logger.exception("Unexpected error writing to DynamoDB: user=%s datetime=%s", user_val, dt_val)
+        return {"success": False, "error": str(e), "item_size_bytes": item_size_bytes}

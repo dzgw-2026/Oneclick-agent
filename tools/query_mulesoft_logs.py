@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 import httpx
 
@@ -12,6 +13,7 @@ async def query_mulesoft_logs(ctx_id: str, trigger_time: str, credentials: dict)
     if not ctx_id:
         return {"success": False, "error": "No context ID provided"}
 
+    t0 = time.monotonic()
     api_key = credentials['api_key']
     app_key = credentials['application_key']
     endpoint = credentials['endpoint']
@@ -52,11 +54,50 @@ async def query_mulesoft_logs(ctx_id: str, trigger_time: str, credentials: dict)
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(endpoint, headers=headers, json=body, timeout=30.0)
-            response.raise_for_status()
+
+            # Log status and rate-limit headers for diagnostics regardless of outcome.
+            rl_limit = response.headers.get("x-ratelimit-limit", "-")
+            rl_remaining = response.headers.get("x-ratelimit-remaining", "-")
+            rl_reset = response.headers.get("x-ratelimit-reset", "-")
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            if response.status_code == 429:
+                logger.error(
+                    "query_mulesoft_logs -> 429 THROTTLED | ctx_id=%s elapsed=%dms "
+                    "x-ratelimit-limit=%s remaining=%s reset=%s",
+                    ctx_id, elapsed_ms, rl_limit, rl_remaining, rl_reset,
+                )
+                return {
+                    "success": False,
+                    "error": "Datadog rate limit (429)",
+                    "status": 429,
+                    "ctx_id": ctx_id,
+                    "ratelimit_reset": rl_reset,
+                }
+
+            if response.status_code >= 400:
+                logger.error(
+                    "query_mulesoft_logs -> HTTP %d | ctx_id=%s elapsed=%dms "
+                    "x-ratelimit-limit=%s remaining=%s reset=%s body=%s",
+                    response.status_code, ctx_id, elapsed_ms,
+                    rl_limit, rl_remaining, rl_reset,
+                    response.text[:500],
+                )
+                return {
+                    "success": False,
+                    "error": f"Datadog HTTP {response.status_code}",
+                    "status": response.status_code,
+                    "ctx_id": ctx_id,
+                }
+
             data = response.json()
             events = data.get('data', [])
             
-            logger.info(f"Datadog returned {len(events)} events for Mulesoft correlation")
+            logger.info(
+                "query_mulesoft_logs -> 200 | ctx_id=%s events=%d elapsed=%dms "
+                "x-ratelimit-limit=%s remaining=%s reset=%s",
+                ctx_id, len(events), elapsed_ms, rl_limit, rl_remaining, rl_reset,
+            )
             
             logs = []
             for event in events:
@@ -72,6 +113,25 @@ async def query_mulesoft_logs(ctx_id: str, trigger_time: str, credentials: dict)
                 })
                 
             return {"success": True, "ctx_id": ctx_id, "logs": logs}
+
+    except httpx.HTTPStatusError as e:
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        logger.error(
+            "query_mulesoft_logs HTTPStatusError: status=%d ctx_id=%s elapsed=%dms error=%s",
+            e.response.status_code, ctx_id, elapsed_ms, e,
+        )
+        return {"success": False, "error": str(e), "status": e.response.status_code, "ctx_id": ctx_id}
+    except httpx.RequestError as e:
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        logger.error(
+            "query_mulesoft_logs RequestError: ctx_id=%s elapsed=%dms error=%s",
+            ctx_id, elapsed_ms, e,
+        )
+        return {"success": False, "error": str(e), "ctx_id": ctx_id}
     except Exception as e:
-        logger.error(f"Mulesoft log fetch failed: {e}")
-        return {"success": False, "error": str(e)}
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        logger.error(
+            "query_mulesoft_logs unexpected error: ctx_id=%s elapsed=%dms %s: %s",
+            ctx_id, elapsed_ms, type(e).__name__, e,
+        )
+        return {"success": False, "error": str(e), "ctx_id": ctx_id}
