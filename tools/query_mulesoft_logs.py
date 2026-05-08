@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import logging
+import os
 import time
 from datetime import datetime, timedelta
 import httpx
@@ -24,18 +25,19 @@ async def query_mulesoft_logs(ctx_id: str, trigger_time: str, credentials: dict)
         'Content-Type': 'application/json'
     }
 
-    # Define time window around the trigger time
-    # Expand lookback and lookforward to handle timezone offsets and indexing delays
+    # Define time window around the trigger time.
+    # Default ±1h; configurable via MULESOFT_LOOKBACK_MINUTES env var.
     try:
         trigger_dt = datetime.fromisoformat(trigger_time.replace('Z', '+00:00'))
     except (ValueError, AttributeError):
         trigger_dt = datetime.now()
-        
-    start_dt = trigger_dt - timedelta(hours=12)
-    end_dt = trigger_dt + timedelta(hours=12) 
+
+    lookback_minutes = int(os.environ.get("MULESOFT_LOOKBACK_MINUTES", "60"))
+    start_dt = trigger_dt - timedelta(minutes=lookback_minutes)
+    end_dt = trigger_dt + timedelta(minutes=lookback_minutes)
     
-    # Query for the specific context ID across Mulesoft services
-    query = f"service:mulesoft* (@correlation_id:*{ctx_id}* OR @ctx_id:*{ctx_id}* OR @correlationId:*{ctx_id}* OR \"{ctx_id}\")"
+    # Exact-match query — no leading wildcards, no full-text fallback.
+    query = f"service:mulesoft* (@correlation_id:{ctx_id} OR @ctx_id:{ctx_id} OR @correlationId:{ctx_id})"
 
     logger.info(f"Querying Datadog for Mulesoft logs: ctx_id={ctx_id}")
     logger.info(f"Time window: {start_dt.isoformat()} to {end_dt.isoformat()}")

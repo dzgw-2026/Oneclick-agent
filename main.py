@@ -22,6 +22,11 @@ import httpx
 # Request-scoped trace ID for correlating log lines across a single invocation.
 _trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar('trace_id', default='no-trace')
 
+# Request-scoped cache so persist_analysis_artifacts can reuse Datadog
+# results already fetched by query_datadog_error_logs / fetch_datadog_session_logs
+# instead of re-querying (~150 redundant API calls eliminated).
+_datadog_cache: dict[str, dict] = {}
+
 
 def _tid() -> str:
     """Shortcut to get the current trace ID."""
@@ -210,6 +215,7 @@ async def query_datadog_error_logs(record_id: str, user: str = "", trigger_time:
         trigger_dt=trigger_dt,
         lookback_minutes=lookback_minutes,
     )
+    _datadog_cache["raw_logs"] = result
     log.info("[%s] query_datadog_error_logs END %dms success=%s", _tid(), int((time.monotonic() - t0) * 1000), result.get('success'))
     return result
 
@@ -243,6 +249,7 @@ async def fetch_datadog_session_logs(user: str, record_id: str, trigger_time: st
         trigger_dt=trigger_dt,
         lookback_minutes=10,
     )
+    _datadog_cache["session_logs"] = result
     log.info("[%s] fetch_datadog_session_logs END %dms success=%s", _tid(), int((time.monotonic() - t0) * 1000), result.get('success'))
     return result
 
@@ -270,6 +277,7 @@ async def fetch_mulesoft_logs(ctx_id: str, trigger_time: str) -> dict:
             trigger_time=trigger_time,
             credentials=credentials,
         )
+        _datadog_cache["mulesoft_logs"] = result
         log.info("[%s] fetch_mulesoft_logs END %dms success=%s", _tid(), int((time.monotonic() - t0) * 1000), result.get('success'))
         return result
     except Exception as e:
@@ -446,19 +454,32 @@ async def persist_analysis_artifacts(
     except ValueError:
         trigger_dt = datetime.now()
 
-    lookback_for_raw = 10 if not error_message else 1440
-    raw_logs = await _fetch_datadog_logs(
-        user=user,
-        record_id=record_id,
-        trigger_dt=trigger_dt,
-        lookback_minutes=lookback_for_raw,
-    )
-    session_logs = await _fetch_datadog_logs(
-        user=user,
-        record_id=record_id,
-        trigger_dt=trigger_dt,
-        lookback_minutes=10,
-    )
+    # Re-use Datadog logs the agent already fetched earlier in the session
+    # (via query_datadog_error_logs / fetch_datadog_session_logs) instead of
+    # re-querying Datadog. This eliminates ~150 redundant API calls per
+    # request that were the primary cause of Datadog 429s.
+    raw_logs = _datadog_cache.get("raw_logs")
+    if raw_logs is None:
+        lookback_for_raw = 10 if not error_message else 1440
+        raw_logs = await _fetch_datadog_logs(
+            user=user,
+            record_id=record_id,
+            trigger_dt=trigger_dt,
+            lookback_minutes=lookback_for_raw,
+        )
+    else:
+        log.info("[%s] persist_analysis_artifacts: reusing cached raw_logs (%d entries)", _tid(), raw_logs.get("match_count", 0))
+
+    session_logs = _datadog_cache.get("session_logs")
+    if session_logs is None:
+        session_logs = await _fetch_datadog_logs(
+            user=user,
+            record_id=record_id,
+            trigger_dt=trigger_dt,
+            lookback_minutes=10,
+        )
+    else:
+        log.info("[%s] persist_analysis_artifacts: reusing cached session_logs (%d entries)", _tid(), session_logs.get("match_count", 0))
 
     error_code = _extract_error_code(analysis_obj, raw_logs)
 
@@ -593,6 +614,12 @@ async def _resolve_mulesoft_logs(
     if not resolved_ctx_id:
         return None
 
+    # Reuse MuleSoft logs already fetched by the fetch_mulesoft_logs tool.
+    cached = _datadog_cache.get("mulesoft_logs")
+    if cached is not None:
+        log.info("[%s] _resolve_mulesoft_logs: reusing cached mulesoft_logs for ctx_id=%s", _tid(), resolved_ctx_id)
+        return cached
+
     try:
         credentials = get_datadog_credentials()
         data = await query_mulesoft_logs(
@@ -689,13 +716,17 @@ def get_or_create_agent() -> Agent:
 # Datadog fetch helper
 # ---------------------------------------------------------------------------
 
-_DD_ERROR_CODES = [
+_DD_ERROR_CODES_FULL = [
     300, 301, 302, 303, 304, 305, 306, 307, 308,
     400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423, 424, 425, 426, 427, 428, 429, 431, 440, 444, 449, 450, 451, 460, 463, 494, 495, 496, 497, 498, 499,
     500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 520, 521, 522, 523, 524, 525, 526, 527, 530, 561, 598, 599
 ]
 
-#_DD_ERROR_CODES = [400, 401, 403, 404, 405, 408, 422, 500, 503]
+_DD_ERROR_CODES_SHORT = [400, 401, 403, 404, 405, 408, 422, 500, 503]
+
+# Default to the short list (~9 codes → 9 API calls instead of 75).
+# Set env DD_ERROR_CODES_FULL=1 to restore the full list.
+_DD_ERROR_CODES = _DD_ERROR_CODES_FULL if os.environ.get("DD_ERROR_CODES_FULL") == "1" else _DD_ERROR_CODES_SHORT
 
 
 
@@ -944,6 +975,9 @@ async def invoke(payload, context):
     # Assign a unique trace ID for this request so all log lines can be correlated.
     request_trace_id = str(uuid.uuid4())
     _trace_id_var.set(request_trace_id)
+
+    # Clear the Datadog result cache from any previous request.
+    _datadog_cache.clear()
 
     log.info("[%s] Invoking One-Click Analysis Agent...", request_trace_id)
     log.info("[%s] System prompt path: %s", request_trace_id, _SYSTEM_PROMPT_PATH)
